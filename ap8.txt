@@ -1,0 +1,108 @@
+student_list.html
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student List</title>
+</head>
+<body>
+    {% if student_list %}
+        <table border="1">
+            <tr>
+                <th>USN</th>
+                <th>Courses Enrolled</th>
+            </tr>
+            {% for student in student_list %}
+                <tr>
+                    <td>
+                        <a href="/student_detail/{{ student.pk }}">{{ student.student_usn }}</a>
+                    </td>
+                    <td>
+                        {% for course in student.enrolment.all %}
+                            <span>{{ course.course_name }}</span>
+                        {% endfor %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <h1>No Students Enrolled</h1>
+    {% endif %}
+</body>
+</html>
+
+
+student_detail.html
+
+<h1>Student Name: {{ student.student_name }}</h1>
+<h1>Student USN: {{ student.student_usn }}</h1>
+<h1>Student Sem: {{ student.student_sem }}</h1>
+
+
+
+views.py
+from django.shortcuts import render
+from django.http import HttpResponse
+from django.views import generic
+
+from ap5.models import Course, Student
+
+from django.shortcuts import render
+from .models import Student, Course
+
+
+def reg(request): 
+    if request.method == "POST": 
+        sid = request.POST.get("sname") 
+        cid = request.POST.get("cname") 
+        student = Student.objects.get(id=sid) 
+        course = Course.objects.get(id=cid) 
+        res = student.enrolment.filter(id=cid) 
+        if res: 
+            return HttpResponse("<h1>Student already enrolled</h1>") 
+        student.enrolment.add(course) 
+        return HttpResponse("<h1>Student enrolled successfully</h1>") 
+    else: 
+        students = Student.objects.all() 
+        courses = Course.objects.all()
+        return render(request, "reg.html", {"students": students, "courses": courses})
+
+def course_search(request): 
+    if request.method == "POST":
+        cid = request.POST.get("cname") 
+        s = Student.objects.all() 
+        student_list = [] 
+        for student in s: 
+            if student.enrolment.filter(id=cid): 
+                student_list.append(student) 
+        if len(student_list) == 0: 
+            return HttpResponse("<h1>No Students enrolled</h1>")
+        return render(request, "selected_student.html", {"student_list": student_list})
+    else: 
+        courses = Course.objects.all() 
+        return render(request, "course_search.html", {"courses": courses})
+
+class StudentListView(generic.ListView):
+    model=Student
+    template_name="student_list.html"   
+
+class StudentDetailView(generic.DetailView):
+    model=Student
+    template_name="student_detail.html"
+
+
+urls.py
+
+from django.contrib import admin
+from django.urls import path
+from ap5.views import reg, course_search
+from ap5.views import StudentDetailView,StudentListView
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('reg/',reg),
+    path('course_search/',course_search),
+    path('student_list/',StudentListView.as_view()),
+    path('student_detail/<int:pk>/',StudentDetailView.as_view()),  
+  
+]
